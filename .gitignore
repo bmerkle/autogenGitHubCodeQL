@@ -28,3 +28,4 @@ codeql-db/
 # OS files
 Thumbs.db
 .DS_Store
+results.sarif

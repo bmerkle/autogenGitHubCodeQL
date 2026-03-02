@@ -8,12 +8,18 @@
 
 import cpp
 
-from Struct s, Member m
+from Struct s
 where
-  // 1. Find members belonging to the struct
-  m = s.getAMember() and
-  // 2. Check if the member is NOT public (i.e., private or protected)
-  not m.isPublic() and
-  // 3. Ensure we aren't looking at compiler-generated internal members
-  not m.isCompilerGenerated()
-select s, "The struct '" + s.getName() + "' should be declared as a 'class' because it contains non-public members (e.g., '" + m.getName() + "')."
+  s.fromSource() and
+  (
+    exists(MemberVariable mv |
+      mv.getDeclaringType() = s and
+      (mv.hasSpecifier("private") or mv.hasSpecifier("protected"))
+    )
+    or
+    exists(MemberFunction mf |
+      mf.getDeclaringType() = s and
+      (mf.hasSpecifier("private") or mf.hasSpecifier("protected"))
+    )
+  )
+select s, "The struct '" + s.getName() + "' should be declared as a 'class' because it contains non-public members."
