@@ -29,3 +29,16 @@ add_executable(test_greeter
 target_link_libraries(test_greeter PRIVATE greeter_lib)
 
 add_test(NAME GreeterTests COMMAND test_greeter)
+
+# ── CodeQL test files ─────────────────────────────────────────
+# These are compiled so CodeQL can analyse them, but they are
+# NOT registered as CTest tests (they exist only to exercise
+# the custom CodeQL queries).
+
+add_executable(test_long_function
+    tests/test_long-function.cpp
+)
+
+add_executable(test_t21_operators
+    tests/test_T21-require-complete-set-of-operations-for-concept.cpp
+)

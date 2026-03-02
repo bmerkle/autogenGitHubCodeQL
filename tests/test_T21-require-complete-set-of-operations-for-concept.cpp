@@ -1,59 +1,64 @@
-
-#include <concepts>
+// ──────────────────────────────────────────────────────────────
+// Test file for T21 — incomplete operator sets
+//
+// CodeQL analyses the CLASS DECLARATIONS and their operator
+// overloads.  It does NOT need to compile expressions that use
+// the missing operators.  The comments below show what would
+// fail at compile time if you tried to use the incomplete API.
+// ──────────────────────────────────────────────────────────────
 
 ///////////////////////////////////////////////
-//bad example
+// BAD example — incomplete operator set
+//   (should trigger CodeQL warning)
 ///////////////////////////////////////////////
 
-template<typename T> concept Subtractable = requires(T a, T b) { a - b; };
-
-///////////////////////////////////////////////
-//minimal example
-///////////////////////////////////////////////
 class Minimal {
-    // ...
+    int value;
+public:
+    Minimal(int v) : value(v) {}
+    int getValue() const { return value; }
 };
 
-bool operator==(const Minimal&, const Minimal&);
-bool operator<(const Minimal&, const Minimal&);
+// Only operator== and operator< — missing !=, >, <=, >=
+bool operator==(const Minimal& a, const Minimal& b) { return a.getValue() == b.getValue(); }
+bool operator<(const Minimal& a, const Minimal& b)  { return a.getValue() <  b.getValue(); }
 
-Minimal operator+(const Minimal&, const Minimal&);
-// no other operators
+// Only operator+ — missing operator-
+Minimal operator+(const Minimal& a, const Minimal& b) { return Minimal(a.getValue() + b.getValue()); }
 
-void f_minimal(const Minimal& x, const Minimal& y)
-{
-    if (!(x == y)) { /* ... */ }    // OK
-    if (x != y) { /* ... */ }       // surprise! error
-
-    while (!(x < y)) { /* ... */ }  // OK
-    while (x >= y) { /* ... */ }    // surprise! error
-
-    x = x + y;          // OK
-    x += y;             // surprise! error
-}
+// The following calls would FAIL to compile because the operators are missing:
+//   if (x != y) { /* ... */ }       // error: no operator!=
+//   while (x >= y) { /* ... */ }    // error: no operator>=
+//   x += y;                         // error: no operator+=
 
 ///////////////////////////////////////////////
-// convient example
+// GOOD example — complete operator set
+//   (should NOT trigger CodeQL warning)
 ///////////////////////////////////////////////
+
 class Convenient {
-    // ...
+    int value;
+public:
+    Convenient(int v) : value(v) {}
+    int getValue() const { return value; }
 };
 
-bool operator==(const Convenient&, const Convenient&);
-bool operator<(const Convenient&, const Convenient&);
-// ... and the other comparison operators ...
+// Complete comparison set
+bool operator==(const Convenient& a, const Convenient& b) { return a.getValue() == b.getValue(); }
+bool operator!=(const Convenient& a, const Convenient& b) { return !(a == b); }
+bool operator<(const Convenient& a, const Convenient& b)  { return a.getValue() <  b.getValue(); }
+bool operator>(const Convenient& a, const Convenient& b)  { return b < a; }
+bool operator<=(const Convenient& a, const Convenient& b) { return !(b < a); }
+bool operator>=(const Convenient& a, const Convenient& b) { return !(a < b); }
 
-Convenient operator+(const Convenient&, const Convenient&);
-// ... and the other arithmetic operators ...
+// Complete arithmetic set
+Convenient operator+(const Convenient& a, const Convenient& b) { return Convenient(a.getValue() + b.getValue()); }
+Convenient operator-(const Convenient& a, const Convenient& b) { return Convenient(a.getValue() - b.getValue()); }
 
-void f(const Convenient& x, const Convenient& y)
-{
-    if (!(x == y)) { /* ... */ }    // OK
-    if (x != y) { /* ... */ }       // OK
-
-    while (!(x < y)) { /* ... */ }  // OK
-    while (x >= y) { /* ... */ }    // OK
-
-    x = x + y;     // OK
-    x += y;        // OK
+// These all compile fine:
+void f(const Convenient& x, const Convenient& y) {
+    if (x != y) { /* OK */ }
+    while (x >= y) { /* OK */ }
+    Convenient z = x + y;  // OK
+    Convenient w = x - y;  // OK
 }
