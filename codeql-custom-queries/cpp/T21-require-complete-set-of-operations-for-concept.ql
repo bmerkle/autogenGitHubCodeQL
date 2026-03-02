@@ -15,14 +15,26 @@
 import cpp
 
 /*
- * Helper: does the class (or a base) define a member operator with the
- * given name?  Operator names in CodeQL use the C++ spelling, e.g.
- * "operator<", "operator==".
+ * Helper: does the class define an operator with the given name?
+ * Checks both member operators AND free-standing (non-member) operators
+ * whose first parameter type is the class (by value or const-ref).
+ * Operator names use the C++ spelling, e.g. "operator<", "operator==".
  */
 predicate hasOperator(Class c, string op) {
+  // Member operator
   exists(MemberFunction mf |
     mf.getDeclaringType() = c and
     mf.getName() = op
+  )
+  or
+  // Free (non-member) operator whose first parameter is the class
+  exists(Function f |
+    not f instanceof MemberFunction and
+    f.getName() = op and
+    (
+      f.getParameter(0).getType().stripType() = c or
+      f.getParameter(1).getType().stripType() = c
+    )
   )
 }
 

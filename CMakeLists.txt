@@ -42,3 +42,7 @@ add_executable(test_long_function
 add_executable(test_t21_operators
     tests/test_T21-require-complete-set-of-operations-for-concept.cpp
 )
+
+add_executable(test_c8_struct
+    tests/test_C8-use-class-insteadof-struct.cpp
+)
