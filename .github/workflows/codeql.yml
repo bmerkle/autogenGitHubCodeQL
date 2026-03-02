@@ -46,7 +46,9 @@ jobs:
           # ships with CodeQL.  It contains hundreds of rules for
           # common C/C++ issues including security vulnerabilities
           # and general code-quality problems.
-          queries: security-and-quality
+          #
+          # We also include our own custom queries from the repo.
+          queries: security-and-quality,./codeql-custom-queries/cpp/
 
       # ── 3. Build the project (CodeQL intercepts the build) ─
       - name: Build with CMake (for CodeQL tracing)
