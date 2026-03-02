@@ -1,0 +1,30 @@
+# Build directories
+build/
+out/
+cmake-build-*/
+
+# CodeQL database (generated locally)
+codeql-db/
+
+# IDE / editor files
+.vs/
+.vscode/
+*.user
+*.suo
+*.sln.docstates
+
+# Compiled objects
+*.o
+*.obj
+*.exe
+*.out
+*.app
+*.lib
+*.a
+*.dll
+*.so
+*.dylib
+
+# OS files
+Thumbs.db
+.DS_Store

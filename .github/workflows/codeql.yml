@@ -1,0 +1,61 @@
+# ──────────────────────────────────────────────────────────────
+# CodeQL – Static Analysis for C++
+# Uses the standard "security-and-quality" query suite that ships
+# with the CodeQL framework.  This includes rules such as:
+#   • cpp/uninitialized-local          – use of uninitialized variables
+#   • cpp/overflow-buffer              – buffer overflows
+#   • cpp/null-dereference             – null-pointer dereferences
+#   • cpp/missing-return               – missing return statements
+#   • cpp/resource-not-released-in-destructor
+#   • … and many more from the default C/C++ rule set.
+# ──────────────────────────────────────────────────────────────
+name: CodeQL Analysis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Mondays at 06:00 UTC
+    - cron: "0 6 * * 1"
+
+jobs:
+  analyze:
+    name: CodeQL C++ Analysis
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write   # required to upload SARIF results
+      contents: read
+
+    strategy:
+      fail-fast: false
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Initialise CodeQL ───────────────────────────────
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+          # "security-and-quality" is a built-in query suite that
+          # ships with CodeQL.  It contains hundreds of rules for
+          # common C/C++ issues including security vulnerabilities
+          # and general code-quality problems.
+          queries: security-and-quality
+
+      # ── 3. Build the project (CodeQL intercepts the build) ─
+      - name: Build with CMake (for CodeQL tracing)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+
+      # ── 4. Run CodeQL analysis ─────────────────────────────
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:cpp"

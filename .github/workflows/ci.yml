@@ -1,0 +1,54 @@
+# ──────────────────────────────────────────────────────────────
+# CI – Build & Test on Windows (MSVC) and Ubuntu (Clang)
+# ──────────────────────────────────────────────────────────────
+name: CI Build & Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Windows 11 / MSVC ──────────────────────────────────────
+  build-windows:
+    name: Windows (MSVC)
+    runs-on: windows-latest          # Windows Server 2022 / 11-compatible
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure (CMake + MSVC)
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build --build-config Release --output-on-failure
+
+  # ── Ubuntu / Clang ─────────────────────────────────────────
+  build-ubuntu:
+    name: Ubuntu (Clang)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Clang
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang
+
+      - name: Configure (CMake + Clang)
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
