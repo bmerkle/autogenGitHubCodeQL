@@ -1,98 +1,64 @@
-/**  
- * @name Incomplete operation sets in C++ concepts  
- * @description Flags concepts whose `requires`-expressions use certain operations  
- *              (like `-` or `<`) without also requiring a corresponding "complete set"  
- *              of related operations (for example, `+` for `-`, or `==`/`!=` for `<`).  
- * @kind problem  
- * @problem.severity warning  
- * @id cpp/incomplete-concept-operation-set  
- * @tags maintainability readability  
+/**
+ * @name Incomplete set of overloaded operators
+ * @description Flags classes that overload some operators but not a complete,
+ *              related set.  For example a class that defines `operator<` but
+ *              not `operator==`, or `operator-` but not `operator+`.
+ *              This is inspired by the T.21 guideline: "Require a complete
+ *              set of operations for a concept."
+ * @kind problem
+ * @problem.severity warning
+ * @id cpp/incomplete-operator-set
+ * @tags maintainability
+ *       readability
  */
 
-import cpp  
-import semmle.code.cpp.Concept  // Provides Concept, RequiresExpr, SimpleRequirementExpr, etc. <a href="2e998477-8030-4bb2-aaf8-cac91b445fbb" class="citation">[4.1]</a> <a href="70d3939e-99a1-4de3-ab4d-6e5776ed6695" class="citation">[4.5]</a> <a href="77d861b7-ca5b-4ad7-b36a-ca863bdb3887" class="citation">[4.6]</a>
+import cpp
 
-/**  
- * Helper: return true if `e` syntactically uses the given operator spelling.  
- *  
- * This is a simple textual/AST-based heuristic; it does not try to resolve overloads.  
- */  
-predicate exprUsesOperator(Expr e, string op) {  
-  exists(OperatorExpr oe |  
-    oe = e and  
-    oe.getOperator() = op  
-  )  
+/*
+ * Helper: does the class (or a base) define a member operator with the
+ * given name?  Operator names in CodeQL use the C++ spelling, e.g.
+ * "operator<", "operator==".
+ */
+predicate hasOperator(Class c, string op) {
+  exists(MemberFunction mf |
+    mf.getDeclaringType() = c and
+    mf.getName() = op
+  )
 }
 
-/**  
- * A simple requirement whose expression uses a given operator.  
- */  
-class RequirementUsingOp extends SimpleRequirementExpr {  
-  string op;
-
-  RequirementUsingOp() {  
-    exists(string o |  
-      op = o and  
-      exprUsesOperator(this.getExpr(), o)  
-    )  
-  }  
+/*
+ * Comparison completeness:
+ *   If any ordering operator (<, >, <=, >=) is defined,
+ *   then == and != should also be defined.
+ */
+predicate hasAnyOrdering(Class c) {
+  hasOperator(c, "operator<") or
+  hasOperator(c, "operator>") or
+  hasOperator(c, "operator<=") or
+  hasOperator(c, "operator>=")
 }
 
-/**  
- * A concept (or other declaration) with an associated requires-expression.  
- */  
-class HasRequiresExpr extends Concept {  
-  RequiresExpr getRequires() {  
-    result = any(RequiresExpr re | re = this.getARequiresExpr())  
-  }  
+predicate missingEquality(Class c) {
+  hasAnyOrdering(c) and
+  (not hasOperator(c, "operator==") or not hasOperator(c, "operator!="))
 }
 
-/**  
- * Does `re` require the given operator somewhere in its simple requirements?  
- */  
-predicate requiresOp(RequiresExpr re, string op) {  
-  exists(SimpleRequirementExpr sr |  
-    sr = re.getARequirement() and  
-    exprUsesOperator(sr.getExpr(), op)  
-  )  
+/*
+ * Arithmetic completeness:
+ *   If operator- is defined, operator+ should be too (and vice-versa).
+ */
+predicate missingArithmeticCounterpart(Class c) {
+  (hasOperator(c, "operator-") and not hasOperator(c, "operator+"))
+  or
+  (hasOperator(c, "operator+") and not hasOperator(c, "operator-"))
 }
 
-/**  
- * Arithmetic-like concepts:  
- *  - If `-` is required but `+` is not, we consider the set incomplete.  
- *  - You can expand to check the full set (+,-,*,/, +=, -=, *=, /=) if desired.  
- */  
-predicate isIncompleteArithmetic(RequiresExpr re) {  
-  requiresOp(re, "-") and  
-  not requiresOp(re, "+")  
-}
-
-/**  
- * Comparable-like concepts:  
- *  - If any of the ordering operators (<, >, <=, >=) is required  
- *    but equality (`==` and `!=`) is not, we consider the set incomplete.  
- */  
-predicate isIncompleteComparable(RequiresExpr re) {  
-  (  
-    requiresOp(re, "<") or  
-    requiresOp(re, ">") or  
-    requiresOp(re, "<=") or  
-    requiresOp(re, ">=")  
-  ) and  
-  (  
-    not requiresOp(re, "==") or  
-    not requiresOp(re, "!=")  
-  )  
-}
-
-/**  
- * A concept whose requires-expression appears to use an incomplete set of operations.  
- */  
-from HasRequiresExpr c, RequiresExpr re  
-where  
-  re = c.getRequires() and  
-  (isIncompleteArithmetic(re) or isIncompleteComparable(re))  
-select re,  
-  "This concept uses an incomplete set of operations (" +  
-  (isIncompleteArithmetic(re) ? "arithmetic" : "comparison") +  
-  "). Consider requiring the full, meaningful set of related operators."  
+from Class c, string reason
+where
+  c.fromSource() and
+  (
+    missingEquality(c) and reason = "defines ordering operators but is missing operator== or operator!="
+    or
+    missingArithmeticCounterpart(c) and reason = "defines operator+ or operator- but not both"
+  )
+select c, "Class '" + c.getName() + "' has an incomplete set of operators: " + reason + "."
