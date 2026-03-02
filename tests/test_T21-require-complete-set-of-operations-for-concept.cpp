@@ -62,3 +62,7 @@ void f(const Convenient& x, const Convenient& y) {
     Convenient z = x + y;  // OK
     Convenient w = x - y;  // OK
 }
+
+int main() {
+    return 0;
+}
